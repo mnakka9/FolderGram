@@ -1,5 +1,7 @@
+using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -126,6 +128,7 @@ namespace FolderGram.Views
 
         private async void Upload_Click (object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
+            StringBuilder errors = new();
             if (Folder is null)
             {
                 return;
@@ -150,19 +153,34 @@ namespace FolderGram.Views
 
             await foreach (var file in Folder.GetItemsAsync())
             {
-                FileInfo fileInfo = new(file.Path.LocalPath);
-
-                if (convert && extensions.Contains(fileInfo.Extension, System.StringComparison.OrdinalIgnoreCase))
+                if (file is not IStorageFile)
                 {
-                    await ConvertToMp4Upload(fileInfo, txtFFPath.Text!);
+                    continue;
                 }
-                else
+
+                try
                 {
-                    await UploadAndSendFile(fileInfo.FullName, fileInfo.Name);
+                    FileInfo fileInfo = new(file.Path.LocalPath);
+
+                    if (convert && extensions.Contains(fileInfo.Extension, System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        await ConvertToMp4Upload(fileInfo, txtFFPath.Text!);
+                    }
+                    else
+                    {
+                        await UploadAndSendFile(fileInfo.FullName, fileInfo.Name);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errors.Append("Error while uploading file ").Append(file.Name).AppendLine();
+                    errors.Append("Error: ").Append(ex.Message).AppendLine();
+                    continue;
                 }
             }
 
             Model!.Progress = 0;
+            statusText.Text = errors.ToString();
         }
 
         private async Task ConvertToMp4Upload (FileInfo file, string path)
@@ -219,7 +237,7 @@ namespace FolderGram.Views
 
                 var allChats = await _client.Messages_GetAllChats();
 
-                var channels = allChats.chats.Select(x => new Channel
+                var channels = allChats.chats.Where(x => x.Value.IsActive).Select(x => new Channel
                 {
                     Chat = x.Value,
                     Id = x.Key,
