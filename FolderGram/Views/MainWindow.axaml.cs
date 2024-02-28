@@ -162,6 +162,12 @@ namespace FolderGram.Views
                 {
                     FileInfo fileInfo = new(file.Path.LocalPath);
 
+                    if (fileInfo.Length > 2040109465.6)
+                    {
+                        errors.Append("File exceeds the telegram limit of 2 GB ").Append(fileInfo.Name).AppendLine();
+                        continue;
+                    }
+
                     if (convert && extensions.Contains(fileInfo.Extension, System.StringComparison.OrdinalIgnoreCase))
                     {
                         await ConvertToMp4Upload(fileInfo, txtFFPath.Text!);
@@ -242,7 +248,7 @@ namespace FolderGram.Views
                     Chat = x.Value,
                     Id = x.Key,
                     Title = x.Value.Title
-                }).ToList();
+                }).OrderBy(x => x.Title).ToList();
 
                 if (channels.Count != 0)
                 {
