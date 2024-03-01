@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -12,6 +13,8 @@ using Avalonia.Platform.Storage;
 
 using FolderGram.Extensions;
 using FolderGram.ViewModels;
+
+using TL;
 
 using WTelegram;
 
@@ -164,7 +167,7 @@ namespace FolderGram.Views
 
                     if (fileInfo.Length > 2040109465.6)
                     {
-                        errors.Append("File exceeds the telegram limit of 2 GB ").Append(fileInfo.Name).AppendLine();
+                        errors.Append("File exceeds the telegram limit of 2 GB ").AppendLine(fileInfo.Name);
                         continue;
                     }
 
@@ -179,8 +182,8 @@ namespace FolderGram.Views
                 }
                 catch (Exception ex)
                 {
-                    errors.Append("Error while uploading file ").Append(file.Name).AppendLine();
-                    errors.Append("Error: ").Append(ex.Message).AppendLine();
+                    errors.Append("Error while uploading file ").AppendLine(file.Name);
+                    errors.Append("Error: ").AppendLine(ex.Message);
                     continue;
                 }
             }
@@ -203,7 +206,7 @@ namespace FolderGram.Views
 
         private async Task UploadAndSendFile (string filePath, string fileName)
         {
-            var channel = (Channel)channelsList.SelectedItem!;
+            var channel = (ViewModels.Channel)channelsList.SelectedItem!;
 
             if (channel.Chat!.IsBanned())
             {
@@ -211,10 +214,7 @@ namespace FolderGram.Views
             }
             Model!.Progress = 0;
             statusText.Text = $"Uploading file {filePath}";
-            var file = await _client!.UploadFileAsync(filePath, (p, r) =>
-            {
-                Model!.Progress = p * 100 / r;
-            });
+            var file = await _client!.UploadFileAsync(filePath, (p, r) => Model!.Progress = p * 100 / r);
 
             statusText.Text = $"Sending file message to {channel.Title}";
             await _client.SendMediaAsync(channel.Chat, fileName, file);
@@ -243,7 +243,7 @@ namespace FolderGram.Views
 
                 var allChats = await _client.Messages_GetAllChats();
 
-                var channels = allChats.chats.Where(x => x.Value.IsActive).Select(x => new Channel
+                var channels = allChats.chats.Where(x => x.Value.IsActive).Select(x => new ViewModels.Channel
                 {
                     Chat = x.Value,
                     Id = x.Key,
@@ -252,7 +252,10 @@ namespace FolderGram.Views
 
                 if (channels.Count != 0)
                 {
+                    channelsList.ItemsSource = new List<ViewModels.Channel>();
                     channelsList.ItemsSource = channels;
+                    downloadChannels.ItemsSource = new List<ViewModels.Channel>();
+                    downloadChannels.ItemsSource = channels;
                 }
 
                 if (this.VisualRoot is Window window)
@@ -275,6 +278,81 @@ namespace FolderGram.Views
                     }
                 }
             }
+        }
+
+        private IStorageFolder? DownFolder { get; set; }
+
+        private async void Select_Upload_Folder_Click (object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            var root = this.VisualRoot as Window;
+
+            var folders = await root!.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                AllowMultiple = false,
+                Title = "Select a folder"
+            });
+
+            var folder = folders?[0];
+
+            if (folder is not null)
+            {
+                DownFolder = folder;
+                downFolderName.Content = folder.Name;
+            }
+        }
+
+        private async void Download_Telegram_Click (object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (DownFolder != null && downloadChannels.SelectedItem is ViewModels.Channel channel)
+            {
+                var messages = await _client.Messages_GetHistory(channel.Chat);
+
+                var files = messages.Messages.OfType<TL.Message>().Select(m => m.media).ToList();
+
+                foreach (var file in files)
+                {
+                    if (file is MessageMediaDocument { document: Document document })
+                    {
+                        string filename = document.Filename; // use document original filename, or build a name from document ID & MIME type:
+                        filename ??= $"{document.id}.{document.mime_type[(document.mime_type.IndexOf('/') + 1)..]}";
+
+                        downloadStatus.Text = $"Downloading file: {filename}";
+                        _ = await DownloadFile(DownFolder, document, filename);
+                    }
+                    else if (file is MessageMediaPhoto { photo: Photo photo })
+                    {
+                        var filename = $"{photo.id}.jpg";
+                        downloadStatus.Text = $"Downloading file: {filename}";
+                        var (type, photoFile) = await DownloadFile(DownFolder, photo, filename);
+                        if (type is not Storage_FileType.unknown and not Storage_FileType.partial)
+                        {
+                            var newPath = Path.Combine(DownFolder.Path.LocalPath, $"{photo.id}.{type}");
+                            File.Move(photoFile!.Path.LocalPath, newPath, true);
+                        }
+                    }
+                }
+            }
+        }
+
+        private async Task<(Storage_FileType, IStorageFile?)> DownloadFile<T> (IStorageFolder folder, T document, string filename)
+        {
+            var storageFile = await folder.CreateFileAsync(filename);
+            await using var stream = await storageFile!.OpenWriteAsync();
+            //await using var fileStream = File.Create(filename);
+            if (document is Document doc)
+            {
+                await _client!.DownloadFileAsync(doc, stream, null, (p, r) => Model!.DownProgress = p * 100 / r);
+
+                return (Storage_FileType.mp4, storageFile);
+            }
+            else if (document is Photo photo)
+            {
+                var result = await _client!.DownloadFileAsync(photo, stream, null, (p, r) => Model!.DownProgress = p * 100 / r);
+
+                return (result, storageFile);
+            }
+
+            return (Storage_FileType.unknown, storageFile);
         }
     }
 }

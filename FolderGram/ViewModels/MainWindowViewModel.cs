@@ -21,5 +21,19 @@ namespace FolderGram.ViewModels
             get => _progress;
             set => this.RaiseAndSetIfChanged(ref _progress, value);
         }
+
+        private double _downProgress = 0;
+        public double DownProgress
+        {
+            get => _downProgress;
+            set => this.RaiseAndSetIfChanged(ref _downProgress, value);
+        }
+
+        private string[] _downFiles = [];
+        public string[] DownFiles
+        {
+            get => _downFiles;
+            set => this.RaiseAndSetIfChanged(ref _downFiles, value);
+        }
     }
 }

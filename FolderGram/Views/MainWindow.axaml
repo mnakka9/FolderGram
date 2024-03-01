@@ -3,9 +3,10 @@
 		xmlns:vm="using:FolderGram.ViewModels"
 		xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-		mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+		mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="550"
 		x:Class="FolderGram.Views.MainWindow"
 		x:DataType="vm:MainWindowViewModel"
+		WindowState="Maximized"
 		Icon="/Assets/avalonia-logo.ico"
 		Title="FolderGram">
 
@@ -21,52 +22,120 @@
 				   Text="FolderGram"
 				   Foreground="OrangeRed">
 		</TextBlock>
-		<DockPanel Margin="10" Grid.Row="1">
-			<StackPanel DockPanel.Dock="Top" Margin="10">
-				<StackPanel Spacing="5">
-					<StackPanel Spacing="10" Margin="9" Orientation="Horizontal">
-						<Label>Api Id:</Label>
-						<TextBox Margin="5" x:Name="txtApiId" Width="100"></TextBox>
-						<Label>Api Hash:</Label>
-						<TextBox Margin="5" x:Name="txtHash" Width="100"></TextBox>
-						<Label>Phone Number:</Label>
-						<TextBox Margin="5" x:Name="txtPhone" Width="100"></TextBox>
-					</StackPanel>
-					<Button
-						x:Name="loginButton"
-						HorizontalContentAlignment="Center"
-						Width="80"
-						Click="Login_Click"
-						HorizontalAlignment="Center"
-						VerticalAlignment="Center"
-						Background="BlueViolet"
-						Foreground="White">
-						Login
-					</Button>
-					<StackPanel Orientation="Horizontal" x:Name="secretCodePanel" Spacing="10" IsVisible="False">
-						<Label x:Name="labelCode">OTP Code:</Label>
-						<TextBox ToolTip.Tip="Enter code and click login" Margin="5" Width="100" x:Name="confirmCode"></TextBox>
-						<Button
-						x:Name="sendCode"
-						HorizontalContentAlignment="Center"
-						Width="80"
-						Click="SendCode_Click"
-						HorizontalAlignment="Center"
-						VerticalAlignment="Center"
-						Background="BlueViolet"
-						Foreground="White">
-							Send Code
-						</Button>
-					</StackPanel>
+		<TabControl Grid.Row="1" Margin="5,0,0,0">
+			<TabItem Header="Upload">
+				<DockPanel>
+					<StackPanel DockPanel.Dock="Top" Margin="10">
+						<StackPanel Spacing="5">
+							<StackPanel Spacing="10" Margin="9" Orientation="Horizontal">
+								<Label>Api Id:</Label>
+								<TextBox Margin="5" x:Name="txtApiId" Width="100"></TextBox>
+								<Label>Api Hash:</Label>
+								<TextBox Margin="5" x:Name="txtHash" Width="100"></TextBox>
+								<Label>Phone Number:</Label>
+								<TextBox Margin="5" x:Name="txtPhone" Width="100"></TextBox>
+							</StackPanel>
+							<Button
+								x:Name="loginButton"
+								HorizontalContentAlignment="Center"
+								Width="80"
+								Click="Login_Click"
+								HorizontalAlignment="Center"
+								VerticalAlignment="Center"
+								Background="BlueViolet"
+								Foreground="White">
+								Login
+							</Button>
+							<StackPanel Orientation="Horizontal" x:Name="secretCodePanel" Spacing="10" IsVisible="False">
+								<Label x:Name="labelCode">OTP Code:</Label>
+								<TextBox ToolTip.Tip="Enter code and click login" Margin="5" Width="100" x:Name="confirmCode"></TextBox>
+								<Button
+								x:Name="sendCode"
+								HorizontalContentAlignment="Center"
+								Width="80"
+								Click="SendCode_Click"
+								HorizontalAlignment="Center"
+								VerticalAlignment="Center"
+								Background="BlueViolet"
+								Foreground="White">
+									Send Code
+								</Button>
+							</StackPanel>
 
-				</StackPanel>
-			</StackPanel>
-			<Grid Margin="15" ColumnDefinitions="Auto, *">
-				<StackPanel Spacing="10" Margin="5" Grid.Column="0">
-					<Label x:Name="userLable"></Label>
-					<StackPanel Spacing="10" Orientation="Horizontal">
+						</StackPanel>
+					</StackPanel>
+					<Grid Margin="15" ColumnDefinitions="Auto, *">
+						<StackPanel Spacing="10" Margin="5" Grid.Column="0">
+							<Label x:Name="userLable"></Label>
+							<StackPanel Spacing="10" Orientation="Horizontal">
+								<Label Content="Select a channel" />
+								<ComboBox Width="150" Margin="5,0" x:Name="channelsList">
+									<ComboBox.ItemTemplate>
+										<DataTemplate x:DataType="vm:Channel">
+											<TextBlock Text="{Binding Title}" />
+										</DataTemplate>
+									</ComboBox.ItemTemplate>
+								</ComboBox>
+							</StackPanel>
+							<StackPanel Spacing="10" Margin="5,5" Orientation="Horizontal">
+								<Label Content="FFMPEG Path:" />
+								<TextBox Width="100" Margin="5,0" x:Name="txtFFPath">
+								</TextBox>
+								<CheckBox x:Name="convertToMp4" ToolTip.Tip="MP4 supports telegram streaming" Content="Convert to mp4?" Margin="5,0"></CheckBox>
+							</StackPanel>
+							<StackPanel Margin="5">
+								<Button Margin="5" Background="BlueViolet"
+										Click="SelectFolder_Click"
+										Foreground="White"
+										HorizontalAlignment="Center"
+										VerticalAlignment="Center">
+									Select a folder
+								</Button>
+								<Label Margin="5" x:Name="selectedFolder"></Label>
+								<Button Margin="5"
+										HorizontalContentAlignment="Center"
+										Background="#FE7A36"
+										Click="Upload_Click"
+										Foreground="White"
+										Width="200"
+										HorizontalAlignment="Center"
+										VerticalAlignment="Center">
+									Upload
+								</Button>
+							</StackPanel>
+						</StackPanel>
+						<StackPanel Margin="5" Spacing="20" Grid.Column="1">
+							<TextBlock x:Name="statusText"
+								FontWeight="Light"
+								TextWrapping="Wrap"
+								Foreground="#337357">
+							</TextBlock>
+							<ProgressBar
+								Maximum="100"
+								Value="{Binding Progress}"
+								Height="20"
+								x:Name="progressBar"
+								Margin="5">
+							</ProgressBar>
+							<TextBlock
+								Text="{Binding Output}"
+								FontWeight="Medium"
+								TextWrapping="Wrap"
+								Foreground="BlueViolet"
+								x:Name="resultText">
+							</TextBlock>
+						</StackPanel>
+					</Grid>
+				</DockPanel>
+			</TabItem>
+			<TabItem Margin="5" Header="Download">
+				<StackPanel Margin="15">
+					<StackPanel Height="40" Margin="5">
+						<Label Foreground="Green" FontWeight="Bold" Content="Please login in the upload to continue" />
+					</StackPanel>
+					<StackPanel Margin="5" Spacing="10" Orientation="Horizontal">
 						<Label Content="Select a channel" />
-						<ComboBox Width="150" Margin="5,0" x:Name="channelsList">
+						<ComboBox Width="150" Margin="5,0" x:Name="downloadChannels">
 							<ComboBox.ItemTemplate>
 								<DataTemplate x:DataType="vm:Channel">
 									<TextBlock Text="{Binding Title}" />
@@ -74,56 +143,38 @@
 							</ComboBox.ItemTemplate>
 						</ComboBox>
 					</StackPanel>
-					<StackPanel Spacing="10" Margin="5,5" Orientation="Horizontal">
-						<Label Content="FFMPEG Path:" />
-						<TextBox Width="100" Margin="5,0" x:Name="txtFFPath">
-						</TextBox>
-						<CheckBox x:Name="convertToMp4" ToolTip.Tip="MP4 supports telegram streaming" Content="Convert to mp4?" Margin="5,0"></CheckBox>
-					</StackPanel>
-					<StackPanel Margin="5">
-						<Button Margin="5" Background="BlueViolet"
-								Click="SelectFolder_Click"
-								Foreground="White"
-								HorizontalAlignment="Center"
-								VerticalAlignment="Center">
+					<StackPanel Margin="5" Spacing="10">
+						<Button
+							Foreground="White"
+							Click="Select_Upload_Folder_Click"
+							Background="BlueViolet">
 							Select a folder
 						</Button>
-						<Label Margin="5" x:Name="selectedFolder"></Label>
-						<Button Margin="5"
-								HorizontalContentAlignment="Center"
-								Background="#FE7A36"
-								Click="Upload_Click"
-								Foreground="White"
-								Width="200"
-								HorizontalAlignment="Center"
-								VerticalAlignment="Center">
-							Upload
-						</Button>
+						<Label x:Name="downFolderName"></Label>
 					</StackPanel>
+					<Grid Margin="9" ColumnDefinitions="Auto, *">
+						<Button Grid.Column="0" Click="Download_Telegram_Click" Foreground="White" Background="IndianRed">
+							Download
+						</Button>
+						<StackPanel Grid.Column="1" Margin="5">
+							<ListBox Margin="5" MaxHeight="400" ItemsSource="{Binding DownFiles}" x:Name="downloadFiles"></ListBox>
+							<TextBlock  
+								Margin="5"
+								TextWrapping="Wrap"
+								Foreground="Blue"
+								x:Name="downloadStatus" />
+							<ProgressBar Margin="5" Height="20" Maximum="100" Value="{Binding DownProgress}" x:Name="downProgBar">
+
+							</ProgressBar>
+							<TextBlock
+								TextWrapping="Wrap"
+								Foreground="Orange"
+								Margin="5" Text="{Binding Output}" />
+						</StackPanel>
+					</Grid>
 				</StackPanel>
-				<StackPanel Margin="5" Spacing="20" Grid.Column="1">
-					<TextBlock x:Name="statusText"
-						FontWeight="Light"
-					    TextWrapping="Wrap"
-						Foreground="#337357">
-					</TextBlock>
-					<ProgressBar
-						Maximum="100"
-						Value="{Binding Progress}"
-						Height="20"
-						x:Name="progressBar"
-						Margin="5">
-					</ProgressBar>
-					<TextBlock
-						Text="{Binding Output}"
-						FontWeight="Medium"
-						TextWrapping="Wrap"
-						Foreground="BlueViolet"
-						x:Name="resultText">
-					</TextBlock>
-				</StackPanel>
-			</Grid>
-		</DockPanel>
+			</TabItem>
+		</TabControl>
 	</Grid>
 
 </Window>
