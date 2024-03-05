@@ -144,12 +144,15 @@
 						</ComboBox>
 					</StackPanel>
 					<StackPanel Margin="5" Spacing="10">
-						<Button
-							Foreground="White"
-							Click="Select_Upload_Folder_Click"
-							Background="BlueViolet">
-							Select a folder
-						</Button>
+						<StackPanel Margin="2" Spacing="5" Orientation="Horizontal">
+							<Button
+								Foreground="White"
+								Click="Select_Upload_Folder_Click"
+								Background="BlueViolet">
+								Select a folder
+							</Button>
+							<CheckBox Content="Multi Folder?" x:Name="includeChildFolders" />
+						</StackPanel>
 						<Label x:Name="downFolderName"></Label>
 					</StackPanel>
 					<Grid Margin="9" ColumnDefinitions="Auto, *">
@@ -158,7 +161,7 @@
 						</Button>
 						<StackPanel Grid.Column="1" Margin="5">
 							<ListBox Margin="5" MaxHeight="400" ItemsSource="{Binding DownFiles}" x:Name="downloadFiles"></ListBox>
-							<TextBlock  
+							<TextBlock
 								Margin="5"
 								TextWrapping="Wrap"
 								Foreground="Blue"

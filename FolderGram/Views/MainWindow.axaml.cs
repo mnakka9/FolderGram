@@ -154,31 +154,52 @@ namespace FolderGram.Views
                 convert = true;
             }
 
+            var channel = (ViewModels.Channel)channelsList.SelectedItem!;
+
+            if (channel.Chat!.IsBanned())
+            {
+                errors.AppendLine("Chat is banned");
+
+                statusText.Text = errors.ToString();
+
+                return;
+            }
+
             await foreach (var file in Folder.GetItemsAsync())
             {
-                if (file is not IStorageFile)
+                if (file is not IStorageFile && file is IStorageFolder directory)
                 {
-                    continue;
+                    try
+                    {
+                        await _client!.SendMessageAsync(channel.Chat!, $"==================={Environment.NewLine}{directory.Name}");
+
+                        await foreach (var item in directory.GetItemsAsync())
+                        {
+                            if (item is not IStorageFile)
+                            {
+                                continue;
+                            }
+
+                            await UploadFiles(errors, convert, item, channel.Chat!);
+                        }
+
+                        await _client!.SendMessageAsync(channel.Chat!, $"{directory.Name}{Environment.NewLine}===================");
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Append("Error while sending message ").AppendLine(ex.Message);
+                        continue;
+                    }
                 }
 
                 try
                 {
-                    FileInfo fileInfo = new(file.Path.LocalPath);
-
-                    if (fileInfo.Length > 2040109465.6)
+                    if (file is not IStorageFile)
                     {
-                        errors.Append("File exceeds the telegram limit of 2 GB ").AppendLine(fileInfo.Name);
                         continue;
                     }
 
-                    if (convert && extensions.Contains(fileInfo.Extension, System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        await ConvertToMp4Upload(fileInfo, txtFFPath.Text!);
-                    }
-                    else
-                    {
-                        await UploadAndSendFile(fileInfo.FullName, fileInfo.Name);
-                    }
+                    await UploadFiles(errors, convert, file, channel.Chat!);
                 }
                 catch (Exception ex)
                 {
@@ -192,32 +213,47 @@ namespace FolderGram.Views
             statusText.Text = errors.ToString();
         }
 
-        private async Task ConvertToMp4Upload (FileInfo file, string path)
+        private async Task UploadFiles (StringBuilder errors, bool convert, IStorageItem file, ChatBase chatBase)
+        {
+            FileInfo fileInfo = new(file.Path.LocalPath);
+
+            if (fileInfo.Length > 2040109465.6)
+            {
+                errors.Append("File exceeds the telegram limit of 2 GB ").AppendLine(fileInfo.Name);
+
+                return;
+            }
+
+            if (convert && extensions.Contains(fileInfo.Extension, System.StringComparison.OrdinalIgnoreCase))
+            {
+                await ConvertToMp4Upload(fileInfo, txtFFPath.Text!, chatBase);
+            }
+            else
+            {
+                await UploadAndSendFile(fileInfo.FullName, fileInfo.Name, chatBase);
+            }
+        }
+
+        private async Task ConvertToMp4Upload (FileInfo file, string path, ChatBase chat)
         {
             var converter = new Converter(Model!);
             var mp4Path = file.Name + ".mp4";
             statusText.Text = $"Converting {file.Extension} file to mp4";
             await converter.StartConverting(file.FullName, mp4Path, path, CancellationToken.None);
 
-            await UploadAndSendFile(mp4Path, file.Name);
+            await UploadAndSendFile(mp4Path, file.Name, chat);
 
             File.Delete(mp4Path);
         }
 
-        private async Task UploadAndSendFile (string filePath, string fileName)
+        private async Task UploadAndSendFile (string filePath, string fileName, ChatBase channel)
         {
-            var channel = (ViewModels.Channel)channelsList.SelectedItem!;
-
-            if (channel.Chat!.IsBanned())
-            {
-                return;
-            }
             Model!.Progress = 0;
             statusText.Text = $"Uploading file {filePath}";
             var file = await _client!.UploadFileAsync(filePath, (p, r) => Model!.Progress = p * 100 / r);
 
             statusText.Text = $"Sending file message to {channel.Title}";
-            await _client.SendMediaAsync(channel.Chat, fileName, file);
+            await _client.SendMediaAsync(channel, fileName, file);
             statusText.Text = "Done";
             await Task.Delay(100);
 
