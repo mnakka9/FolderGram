@@ -22,6 +22,8 @@ namespace FolderGram.Views
 {
     public partial class MainWindow : Window
     {
+        FileSystemWatcher watcher;
+
         const string extensions = ".webm, .mkv, .flv, .mov, .wmv, .avi, .mkv, .mpg, .m4v, .flv";
         private Client? _client;
         private IStorageFolder? Folder { get; set; }
@@ -58,6 +60,24 @@ namespace FolderGram.Views
                         txtHash.Text = telegram.ApiHash;
                         txtPhone.Text = telegram.Phone;
                         txtFFPath.Text = telegram.EnginePath;
+                    }
+                }
+
+                var syncFile = await window.StorageProvider.TryGetFileFromPathAsync("sync.json");
+
+                if (syncFile is not null)
+                {
+                    var allTextStream = await syncFile.OpenReadAsync();
+
+                    using StreamReader streamReader = new(allTextStream);
+                    var allTextJson = streamReader.ReadToEnd();
+
+                    var syncDetail = JsonSerializer.Deserialize<SyncDetail>(allTextJson);
+
+                    if (syncDetail is not null)
+                    {
+                        Model!.SyncDetail = syncDetail;
+                        txtSyncFolder.Text = syncDetail.FolderPath;
                     }
                 }
             }
@@ -230,7 +250,7 @@ namespace FolderGram.Views
             }
             else
             {
-                await UploadAndSendFile(fileInfo.FullName, fileInfo.Name, chatBase);
+                await UploadAndSendFile(fileInfo.FullName, fileInfo.Name, chatBase, false);
             }
         }
 
@@ -241,23 +261,32 @@ namespace FolderGram.Views
             statusText.Text = $"Converting {file.Extension} file to mp4";
             await converter.StartConverting(file.FullName, mp4Path, path, CancellationToken.None);
 
-            await UploadAndSendFile(mp4Path, file.Name, chat);
+            await UploadAndSendFile(mp4Path, file.Name, chat, false);
 
             File.Delete(mp4Path);
         }
 
-        private async Task UploadAndSendFile (string filePath, string fileName, ChatBase channel)
+        private async Task UploadAndSendFile (string filePath, string fileName, ChatBase channel, bool isSync = false)
         {
             Model!.Progress = 0;
-            statusText.Text = $"Uploading file {filePath}";
+            UpdateStatus($"Uploading file {filePath}", isSync);
             var file = await _client!.UploadFileAsync(filePath, (p, r) => Model!.Progress = p * 100 / r);
 
-            statusText.Text = $"Sending file message to {channel.Title}";
+            UpdateStatus($"Sending file message to {channel.Title}", isSync);
             await _client.SendMediaAsync(channel, fileName, file);
-            statusText.Text = "Done";
-            await Task.Delay(100);
+        }
 
-            statusText.Text = "";
+        private void UpdateStatus (string message, bool isSync)
+        {
+            if (isSync)
+            {
+                //syncStatus.Text = message;
+                Model!.SyncOutput = message;
+            }
+            else
+            {
+                statusText.Text = message;
+            }
         }
 
         private async Task DoLogin (string loginInfo)
@@ -292,6 +321,8 @@ namespace FolderGram.Views
                     channelsList.ItemsSource = channels;
                     downloadChannels.ItemsSource = new List<ViewModels.Channel>();
                     downloadChannels.ItemsSource = channels;
+                    syncChannels.ItemsSource = new List<ViewModels.Channel>();
+                    syncChannels.ItemsSource = channels;
                 }
 
                 if (this.VisualRoot is Window window)
@@ -389,6 +420,75 @@ namespace FolderGram.Views
             }
 
             return (Storage_FileType.unknown, storageFile);
+        }
+
+        private void Sync_Click (object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+        }
+
+        private async void Sync_Setup_Click (object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (txtSyncFolder.Text.IsNull())
+            {
+                txtSyncFolder.Focus();
+                return;
+            }
+
+            var window = this.VisualRoot as Window;
+
+            var dir = await window!.StorageProvider.TryGetFolderFromPathAsync(txtSyncFolder.Text!);
+
+            if (dir != null)
+            {
+                var allFiles = Directory.GetFiles(dir.Path.LocalPath);
+                SyncDetail syncDetail = new SyncDetail
+                {
+                    FolderPath = dir.Path.LocalPath,
+                    LastSync = DateTime.Now,
+                    FileCount = allFiles.Length
+                };
+                Model!.SyncDetail = syncDetail;
+                File.WriteAllText("sync.json", JsonSerializer.Serialize(syncDetail));
+
+                watcher = new(dir.Path.LocalPath)
+                {
+                    EnableRaisingEvents = true,
+                    IncludeSubdirectories = true,
+                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
+                    Filter = "*.*" // Monitor all files
+                };
+
+                watcher.Created += Watcher_Created;
+                //watcher.Changed += Watcher_Changed;
+                watcher.Renamed += Watcher_Renamed;
+            }
+        }
+
+        private async void Watcher_Renamed (object sender, RenamedEventArgs e)
+        {
+            await UploadSingleFile(e);
+        }
+
+        private async void Watcher_Changed (object sender, FileSystemEventArgs e)
+        {
+            await UploadSingleFile(e);
+        }
+
+        private async void Watcher_Created (object sender, FileSystemEventArgs e)
+        {
+            await UploadSingleFile(e);
+        }
+
+        private async Task UploadSingleFile (FileSystemEventArgs e)
+        {
+            if (syncChannels.SelectedItem is ViewModels.Channel channel)
+            {
+                await this.UploadAndSendFile(e.FullPath, e.Name ?? string.Empty, channel.Chat!, true);
+                Model!.SyncDetail!.FileCount++;
+                Model!.SyncDetail!.LastSync = DateTime.Now;
+                Model!.Progress = 0;
+                Model!.SyncOutput = string.Empty;
+            }
         }
     }
 }

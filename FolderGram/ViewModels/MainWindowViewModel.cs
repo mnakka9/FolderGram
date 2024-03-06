@@ -15,6 +15,13 @@ namespace FolderGram.ViewModels
             set => this.RaiseAndSetIfChanged(ref _output, value);
         }
 
+        private string _syncOutput = string.Empty;
+        public string SyncOutput
+        {
+            get => _syncOutput;
+            set => this.RaiseAndSetIfChanged(ref _syncOutput, value);
+        }
+
         private double _progress = 0;
         public double Progress
         {
@@ -27,6 +34,14 @@ namespace FolderGram.ViewModels
         {
             get => _downProgress;
             set => this.RaiseAndSetIfChanged(ref _downProgress, value);
+        }
+
+        private SyncDetail? syncDetail;
+
+        public SyncDetail? SyncDetail
+        {
+            get => syncDetail;
+            set => this.RaiseAndSetIfChanged(ref syncDetail, value);
         }
 
         private string[] _downFiles = [];

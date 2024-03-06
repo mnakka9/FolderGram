@@ -177,7 +177,42 @@
 					</Grid>
 				</StackPanel>
 			</TabItem>
+			<TabItem Header="Sync">
+				<Grid Margin="15" RowDefinitions="Auto,*">
+					<StackPanel Margin="5" Spacing="10">
+						<Label
+							Foreground="BlueViolet"
+							FontSize="18"
+							FontWeight="Bold"
+							Content="Sync Folder to Telegram" />
+						<StackPanel Spacing="5" Orientation="Horizontal" Margin="10">
+							<TextBox x:Name="txtSyncFolder" Width="120" />
+							<ComboBox Width="150" Margin="5,0" x:Name="syncChannels">
+								<ComboBox.ItemTemplate>
+									<DataTemplate x:DataType="vm:Channel">
+										<TextBlock Text="{Binding Title}" />
+									</DataTemplate>
+								</ComboBox.ItemTemplate>
+							</ComboBox>
+						</StackPanel>
+						<Button Margin="9" Background="BlueViolet"
+								Foreground="White"
+								Width="120"
+								Content="Start Sync"
+								Click="Sync_Setup_Click"></Button>
+						<StackPanel Orientation="Horizontal" Margin="5" Spacing="10">
+							<Label Content="Last Synced:" />
+							<TextBlock Width="100" Text="{Binding SyncDetail.LastSync}" />
+							<Label Margin="5,0,0,0" Content="File Count"></Label>
+							<TextBlock Text="{Binding SyncDetail.FileCount}" />
+						</StackPanel>
+						<StackPanel Spacing="10" Margin="5">
+							<ProgressBar Value="{Binding Progress}" Height="25" x:Name="syncProgress" Maximum="100"></ProgressBar>
+							<TextBlock Text="{Binding SyncOutput}" Foreground="Green" x:Name="syncStatus" TextWrapping="WrapWithOverflow"></TextBlock>
+						</StackPanel>
+					</StackPanel>
+				</Grid>
+			</TabItem>
 		</TabControl>
 	</Grid>
-
 </Window>
