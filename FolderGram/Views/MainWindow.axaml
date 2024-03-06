@@ -186,7 +186,9 @@
 							FontWeight="Bold"
 							Content="Sync Folder to Telegram" />
 						<StackPanel Spacing="5" Orientation="Horizontal" Margin="10">
+							<Label Content="Folder:"/>
 							<TextBox x:Name="txtSyncFolder" Width="120" />
+							<Label Margin="10,0,0,0" Content="Select Chat" />
 							<ComboBox Width="150" Margin="5,0" x:Name="syncChannels">
 								<ComboBox.ItemTemplate>
 									<DataTemplate x:DataType="vm:Channel">
@@ -195,7 +197,10 @@
 								</ComboBox.ItemTemplate>
 							</ComboBox>
 						</StackPanel>
-						<Button Margin="9" Background="BlueViolet"
+						<Button Margin="9" 
+								HorizontalContentAlignment="Center"
+								VerticalContentAlignment="Center"
+								Background="BlueViolet"
 								Foreground="White"
 								Width="120"
 								Content="Start Sync"
